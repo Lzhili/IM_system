@@ -3,18 +3,24 @@ package main
 import (
 	"fmt"
 	"net"
+	"sync"
 )
 
 type Server struct {
-	Ip   string
-	Port int
+	Ip        string
+	Port      int
+	OnlineMap map[string]*User //在线用户的map
+	mapLock   sync.RWMutex     //锁
+	Message   chan string      //消息广播的channel
 }
 
 // 创建一个server的接口
 func NewServer(ip string, port int) *Server {
 	server := &Server{
-		Ip:   ip,
-		Port: port,
+		Ip:        ip,
+		Port:      port,
+		OnlineMap: make(map[string]*User),
+		Message:   make(chan string),
 	}
 	return server
 }
@@ -31,6 +37,10 @@ func (this *Server) Start() {
 	//close listen socket
 	defer listener.Close()
 
+	//启动监听Message的goroutine
+	go this.ListenMessage()
+
+	//不断循环等待新的客户端链接，每次建立新的链接就创建一个handler的goroutine
 	for {
 		//accept
 		conn, err := listener.Accept()
@@ -43,7 +53,42 @@ func (this *Server) Start() {
 	}
 }
 
+// 监听service的Message广播消息channel的goroutine，一旦有消息就广播给全部在线的User
+func (this *Server) ListenMessage() {
+	for {
+		msg := <-this.Message
+		//将msg发送给全部在线user，user监听到再发送给客户端
+		this.mapLock.Lock()
+		for _, user := range this.OnlineMap {
+			user.C <- msg
+		}
+		this.mapLock.Unlock()
+	}
+}
+
+// 广播消息的方法
+func (this *Server) BroadCast(user *User, msg string) {
+	sendMsg := "[" + user.Addr + "]" + user.Name + ":" + msg
+	this.Message <- sendMsg
+}
+
+// handler
 func (this *Server) Handler(conn net.Conn) {
 	//当前链接的业务
-	fmt.Println("链接建立成功")
+	//fmt.Println("Link established successfully")
+
+	//创建一个新用户
+	user := NewUser(conn)
+
+	//用户上线，将用户加入到OnlineMap中
+	this.mapLock.Lock()
+	this.OnlineMap[user.Name] = user
+	this.mapLock.Unlock()
+
+	//广播当前用户上线消息
+	this.BroadCast(user, " already online")
+
+	//当前handler阻塞
+	select {}
+
 }
