@@ -63,6 +63,27 @@ func (client *Client) menu() bool {
 	}
 }
 
+// 公聊模式
+func (client *Client) PublicChat() {
+	//提示用户输入消息
+	var chatMsg string
+	fmt.Println(">>>> Please enter the chat message, or input \"exit\" to exit")
+	fmt.Scanln(&chatMsg)
+	for chatMsg != "exit" { //一直循环直到输入exit退出
+		//消息不为空则发送给服务器
+		if len(chatMsg) != 0 {
+			_, err := client.conn.Write([]byte(chatMsg))
+			if err != nil {
+				fmt.Println("conn.Write err:", err)
+				break
+			}
+		}
+		chatMsg = "" //记得清空
+		fmt.Println(">>>> Please enter the chat message, or input \"exit\" to exit")
+		fmt.Scanln(&chatMsg)
+	}
+}
+
 // 更新用户名
 func (client *Client) UpdateName() bool {
 	fmt.Println(">>>> Please enter new name: ")
@@ -87,6 +108,7 @@ func (client *Client) Run() {
 		case 1:
 			//公聊模式
 			fmt.Println(">>>>> Public chat mode")
+			client.PublicChat()
 			break
 		case 2:
 			//私聊模式
