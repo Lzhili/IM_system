@@ -4,7 +4,6 @@ import (
 	client "IM_system/client"
 	"flag"
 	"fmt"
-	"time"
 )
 
 // 全局变量
@@ -29,7 +28,5 @@ func main() {
 	fmt.Println(">>>>> serverIp:", serverIp, " and serverPort:", serverPort)
 
 	//启动客户端的业务
-	select {
-	case <-time.After(time.Second * 300):
-	}
+	client.Run()
 }
