@@ -2,7 +2,9 @@ package client
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"os"
 )
 
 type Client struct {
@@ -31,6 +33,19 @@ func NewClient(serverIp string, serverPort int) *Client {
 	return client
 }
 
+// 处理server回应的消息，直接显示到标准输出即可
+func (client *Client) DealResponse() {
+	//一旦client.conn有消息，直接copy到stdout标准输出，永久阻塞监听
+	io.Copy(os.Stdout, client.conn)
+	//上面这行代码等价于下面这段
+	//for {
+	//	buf := make([]byte, xxx)
+	//	client.conn.Read(buf)
+	//	fmt.Println(string(buf))
+	//}
+
+}
+
 func (client *Client) menu() bool {
 	var flag int
 	fmt.Println("1.Public chat mode")
@@ -46,6 +61,20 @@ func (client *Client) menu() bool {
 		fmt.Println(">>>> Please enter a valid number <<<<")
 		return false
 	}
+}
+
+// 更新用户名
+func (client *Client) UpdateName() bool {
+	fmt.Println(">>>> Please enter new name: ")
+	fmt.Scanln(&client.Name)
+
+	sendMsg := "rename|" + client.Name
+	_, err := client.conn.Write([]byte(sendMsg))
+	if err != nil {
+		fmt.Println("conn.Write err:", err)
+		return false
+	}
+	return true
 }
 
 func (client *Client) Run() {
@@ -66,6 +95,7 @@ func (client *Client) Run() {
 		case 3:
 			//更新用户名
 			fmt.Println(">>>>> Update username")
+			client.UpdateName()
 			break
 		}
 	}

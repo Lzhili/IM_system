@@ -24,6 +24,10 @@ func main() {
 	if client == nil {
 		fmt.Println(">>>>> Link to server failed.....")
 	}
+
+	//一旦有新的client就单独开启一个goroutine去处理server的回执消息
+	go client.DealResponse()
+
 	fmt.Println(">>>>> Successfully linked to server......")
 	fmt.Println(">>>>> serverIp:", serverIp, " and serverPort:", serverPort)
 
