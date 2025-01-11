@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"net"
+	"strings"
+)
 
 type User struct {
 	Name   string
@@ -35,7 +38,7 @@ func (this *User) Online() {
 	this.server.mapLock.Unlock()
 
 	//广播当前用户上线消息
-	this.server.BroadCast(this, " already online")
+	this.server.BroadCast(this, "already online")
 }
 
 // 用户下线功能
@@ -46,7 +49,7 @@ func (this *User) Offline() {
 	this.server.mapLock.Unlock()
 
 	//广播当前用户下线消息
-	this.server.BroadCast(this, " already offline")
+	this.server.BroadCast(this, "already offline")
 }
 
 // 用户处理消息功能
@@ -54,10 +57,27 @@ func (this *User) DoMessage(msg string) {
 	if msg == "who" { //查询当前在线用户有哪些
 		this.server.mapLock.Lock()
 		for _, user := range this.server.OnlineMap {
-			whoOnlineMsg := "[" + user.Addr + "] " + user.Name + ": is online..."
+			whoOnlineMsg := "[" + user.Addr + "] " + user.Name + " is online..."
 			this.sendMsg(whoOnlineMsg)
 		}
 		this.server.mapLock.Unlock()
+	} else if len(msg) > 7 && msg[:7] == "rename|" {
+		//消息格式为：rename|xxx
+		newName := strings.Split(msg, "|")[1]
+
+		//判断name是否存在
+		_, ok := this.server.OnlineMap[newName]
+		if ok {
+			this.sendMsg("The current username is being used")
+		} else {
+			this.server.mapLock.Lock()
+			delete(this.server.OnlineMap, this.Name) //删除旧的
+			this.server.OnlineMap[newName] = this    //添加新的
+			this.server.mapLock.Unlock()
+
+			this.Name = newName
+			this.sendMsg("You have updated your username -> " + newName)
+		}
 	} else { //广播
 		this.server.BroadCast(this, msg)
 	}
